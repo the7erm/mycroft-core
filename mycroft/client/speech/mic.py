@@ -135,9 +135,14 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
     # Time between pocketsphinx checks for the wake word
     SEC_BETWEEN_WW_CHECKS = 0.2
 
+    # Prepend this many seconds of audio before wake word.
+    # So things like 'thanks mycroft' will be caught.
+    PRE_AUDIO_MULTIPLIER = 2
+
     def __init__(self, wake_word_recognizer):
         speech_recognition.Recognizer.__init__(self)
         self.daemon = True
+        self.pre_byte_data = '\0'
 
         self.wake_word_recognizer = wake_word_recognizer
         self.audio = pyaudio.PyAudio()
@@ -189,6 +194,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
 
         # bytearray to store audio in
         byte_data = '\0' * source.SAMPLE_WIDTH
+        byte_data += self.pre_byte_data
 
         phrase_complete = False
         while num_chunks < max_chunks and not phrase_complete:
@@ -214,6 +220,14 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
     def sec_to_bytes(sec, source):
         return sec * source.SAMPLE_RATE * source.SAMPLE_WIDTH
 
+    def append_chunk(self, byte_data, chunk, max_size):
+        needs_to_grow = len(byte_data) < max_size
+        if needs_to_grow:
+            byte_data += chunk
+        else:  # Remove beginning of audio and add new chunk to end
+            byte_data = byte_data[len(chunk):] + chunk
+        return byte_data
+
     def wait_until_wake_word(self, source, sec_per_buffer):
         num_silent_bytes = int(self.SILENCE_SEC * source.SAMPLE_RATE *
                                source.SAMPLE_WIDTH)
@@ -222,12 +236,14 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
 
         # bytearray to store audio in
         byte_data = silence
+        self.pre_byte_data = silence
 
         buffers_per_check = self.SEC_BETWEEN_WW_CHECKS / sec_per_buffer
         buffers_since_check = 0.0
 
         # Max bytes for byte_data before audio is removed from the front
         max_size = self.sec_to_bytes(self.SAVED_WW_SEC, source)
+        pre_auido_max_size = max_size * self.PRE_AUDIO_MULTIPLIER
 
         said_wake_word = False
         while not said_wake_word:
@@ -237,16 +253,18 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
             if energy < self.energy_threshold:
                 self.adjust_threshold(energy, sec_per_buffer)
 
-            needs_to_grow = len(byte_data) < max_size
-            if needs_to_grow:
-                byte_data += chunk
-            else:  # Remove beginning of audio and add new chunk to end
-                byte_data = byte_data[len(chunk):] + chunk
+            byte_data = self.append_chunk(byte_data, chunk, max_size)
+            self.pre_byte_data = self.append_chunk(
+                    self.pre_byte_data, chunk, pre_auido_max_size)
 
             buffers_since_check += 1.0
             if buffers_since_check < buffers_per_check:
                 buffers_since_check -= buffers_per_check
                 said_wake_word = self.wake_word_in_audio(byte_data + silence)
+
+            if said_wake_word:
+                int_max_size = int(max_size)
+                self.pre_byte_data = self.pre_byte_data[:-int_max_size]
 
     @staticmethod
     def create_audio_data(raw_data, source):
