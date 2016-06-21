@@ -84,6 +84,9 @@ def handle_wake_up(event):
 def connect():
     client.run_forever()
 
+def handle_intent_complete(message):
+    loop.emit("intent_complete", message)
+
 
 def main():
     global client
@@ -103,6 +106,7 @@ def main():
         handle_multi_utterance_intent_failure)
     client.on('recognizer_loop:sleep', handle_sleep)
     client.on('recognizer_loop:wake_up', handle_wake_up)
+    client.on('intent_complete', handle_intent_complete)
     event_thread = Thread(target=connect)
     event_thread.setDaemon(True)
     event_thread.start()
