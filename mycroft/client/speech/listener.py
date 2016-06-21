@@ -55,6 +55,12 @@ class AudioProducer(threading.Thread):
         self.mic = mic
         self.recognizer = recognizer
         self.emitter = emitter
+        self.emitter.on("intent_complete", self.on_intent_complete)
+
+    def on_intent_complete(self, *args, **kwargs):
+        logger.debug("on_intent_complete:message:args:%s kwargs:%s" % (
+            args, kwargs))
+        self.recognizer.on_intent_complete(*args, **kwargs)
 
     def run(self):
         with self.mic as source:

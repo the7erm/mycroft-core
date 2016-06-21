@@ -185,9 +185,20 @@ class MycroftSkill(object):
         self.registered_intents.append(intent_parser.name)
 
         def receive_handler(message):
+            metadata = {
+                "src_message_type": message.message_type,
+                "src_metadata": message.metadata
+            }
             try:
                 handler(message)
+                self.emitter.emit('intent_complete',
+                    Message('intent_complete',
+                            metdata=metadata,
+                            context=message.context))
             except:
+                self.emitter.emit(Message('intent_error',
+                                          metadata=metadata,
+                                          context=message.context))
                 # TODO: Localize
                 self.speak(
                     "An error occurred while processing a request in " +

@@ -138,6 +138,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
     def __init__(self, wake_word_recognizer):
         speech_recognition.Recognizer.__init__(self)
         self.daemon = True
+        self.intent_complete = False
 
         self.wake_word_recognizer = wake_word_recognizer
         self.audio = pyaudio.PyAudio()
@@ -150,9 +151,13 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
     def calc_energy(sound_chunk, sample_width):
         return audioop.rms(sound_chunk, sample_width)
 
+    def on_intent_complete(self, *args, **kwargs):
+        self.intent_complete = True
+        logger.debug("on_intent_complete args:%s kwargs:%s" % (args, kwargs))
+
     def wake_word_in_audio(self, frame_data):
         hyp = self.wake_word_recognizer.transcribe(frame_data)
-        return self.wake_word_recognizer.found_wake_word(hyp)
+        return self.intent_complete or self.wake_word_recognizer.found_wake_word(hyp)
 
     def record_phrase(self, source, sec_per_buffer):
         """
@@ -271,6 +276,7 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
 
         logger.debug("Waiting for wake word...")
         self.wait_until_wake_word(source, sec_per_buffer)
+        self.intent_complete = False
 
         logger.debug("Recording...")
         emitter.emit("recognizer_loop:record_begin")
