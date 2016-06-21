@@ -192,7 +192,7 @@ class MycroftSkill(object):
             try:
                 handler(message)
                 self.emitter.emit(Message('intent_complete',
-                            metdata=metadata,
+                            metadata=metadata,
                             context=message.context))
             except:
                 self.emitter.emit(Message('intent_error',
