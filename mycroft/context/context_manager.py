@@ -43,11 +43,12 @@ def id_generator(size=8, chars=genrator_characters):
 class MycroftContextManager(object):
 
     def __init__(self):
-        # The history is a chronological history.  new stuff at top
+        # The history is a chronological history new stuff at top,
+        # Old stuff on bottom.
         self.history = []
 
     def insert(self, skill, metadata):
-
+        # Add a context item to the beginning.
         item = {
             "id": id_generator(),
             "metadata": metadata,
@@ -58,12 +59,20 @@ class MycroftContextManager(object):
         self.history.insert(0, item)
 
     def icontains(self, key, value, limit=10, mode="in"):
+        # Search context for a specific key/value pair.
+        # The key is a string and can contain dots, and looks for
+        # case insensitive strings.
+
+        # Split they key up by "." so "metdata.test" will actually
+        # be checking metadata["test"] for the value
         key_parts = key.split(".")
 
         if isinstance(value, (str, unicode)):
             value = value.lower()
 
         def focus_on(x):
+            # This is a filter function.
+            # if it returns true it'll be added to the list
             data = x
             for key in key_parts:
                 data = data.get(key, {})
@@ -72,6 +81,7 @@ class MycroftContextManager(object):
                 data = data.lower()
 
             if mode == "not":
+                # Check if the value isn't in the data.
                 return value not in data
 
             return value in data
@@ -79,14 +89,15 @@ class MycroftContextManager(object):
         return self.recall(limit=limit, filter_by=focus_on)
 
     def not_icontains(self, key, value, limit=10):
+        # Does the exact opposite of icontains.
         return self.icontains(key, value, limit=limit, mode="not")
 
     def callibrate_history(self, focus, forget=False):
         if forget:
-            # Forget everything else
+            # Clears the history, and forgets everything else.
             self.history = focus
         else:
-            # Prepend the focus so it's first.
+            # Re-weighs the history putting focused items on top
             self.history = focus + self.history
             self.uniquify_history()
 
@@ -104,6 +115,7 @@ class MycroftContextManager(object):
         return self.not_icontains(key, value, limit=limit)
 
     def uniquify_history(self):
+        # Make sure there is only one instance of each item in the stack.
         remove_idx = []
         ids = []
         for idx, item in enumerate(self.history):
@@ -118,6 +130,7 @@ class MycroftContextManager(object):
     def recall(self, limit=10, filter_by=None):
         """
         """
+        # Looks for an exact match.
 
         if not filter_by:
             # Return True no matter what
@@ -166,29 +179,42 @@ if __name__ == "__main__":
         }
         context_manager.insert("TestSkill%s" % i, metadata)
 
+    # Get the most recent context items that pertain to `TestSkill1`
     for item in context_manager.recall(filter_by={"skill": "TestSkill1"}):
         print "TestSkill1 item:", item
 
+    # Get the most recent context items that pertain to `TestSkill2`
     for item in context_manager.recall(filter_by={"skill": "TestSkill2"}):
         print "TestSkill2 item:", item
 
+    # Find any context items that have "2" in the value of metdata['test']
     for item in context_manager.icontains("metadata.test", "2"):
         print "icontains:", item
 
+    # Find any context items that DON'T have "2" in the value of metdata['test']
     for item in context_manager.not_icontains("metadata.test", "2"):
         print "not_icontains:", item
 
+    # This is just debug.
     for item in context_manager.history[0:10]:
         print "before:", item
 
+    # "Focus" is a lot like icontains and not_icontains.  The only difference
+    # is it changes of the order of the context history and forces
+    # items to the top.  You can add forget=True to the arguments to wipe
+    # all of mycrofts memory.
     for item in context_manager.focus("metadata.test", "2"):
         print "focus:", item
 
+    # This is debug
     for item in context_manager.history[0:10]:
         print "after focus:", item
 
+    # This is for "mycroft we're not talking about Florida any more"
+    # It does the inverse of focus, and puts them at the bottom.
     for item in context_manager.blur("metadata.test", "2"):
         print "blur:", item
 
+    # This is debug to show what happened after the blur
     for item in context_manager.history[0:10]:
         print "after blur:", item
