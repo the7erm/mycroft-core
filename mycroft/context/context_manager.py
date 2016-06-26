@@ -59,7 +59,7 @@ class MycroftContextManager(object):
         self.history.insert(0, item)
 
     def icontains(self, key, value, limit=10, mode="in"):
-        # Search context for a specific key/value pair.
+        # Search context history for the existence of value.
         # The key is a string and can contain dots, and looks for
         # case insensitive strings.
 
@@ -72,7 +72,7 @@ class MycroftContextManager(object):
 
         def focus_on(x):
             # This is a filter function.
-            # if it returns true it'll be added to the list
+            # if it returns True it'll be added to the list
             data = x
             for key in key_parts:
                 data = data.get(key, {})
@@ -102,8 +102,7 @@ class MycroftContextManager(object):
             self.uniquify_history()
 
     def focus(self, key, value, limit=10, forget=False):
-        # Re-weigh the entire stack.
-        # There is probably a better way to do this.
+        # Re-weigh history, place focused items on the top of history.
         focus = [x for x in self.icontains(key, value, limit=None)]
         self.callibrate_history(focus, forget)
         return self.icontains(key, value, limit=limit)
@@ -137,8 +136,10 @@ class MycroftContextManager(object):
             def filter_function(item):
                 return True
         elif hasattr(filter_by, '__call__'):
+            # filter_by is a function.
             filter_function = filter_by
         elif isinstance(filter_by, dict):
+            # This does an exact match for a key/value pair.
             def filter_function(item):
                 res = False
 
