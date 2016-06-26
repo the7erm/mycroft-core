@@ -35,8 +35,10 @@ dir(string)
 genrator_characters = (string.ascii_uppercase + string.digits +
                        string.ascii_lowercase)
 
+
 def id_generator(size=8, chars=genrator_characters):
     return ''.join(random.choice(chars) for _ in range(size))
+
 
 class MycroftContextManager(object):
 
@@ -55,7 +57,6 @@ class MycroftContextManager(object):
 
         self.history.insert(0, item)
 
-
     def icontains(self, key, value, limit=10, mode="in"):
         key_parts = key.split(".")
 
@@ -71,7 +72,7 @@ class MycroftContextManager(object):
                 data = data.lower()
 
             if mode == "not":
-                return not value in data
+                return value not in data
 
             return value in data
 
@@ -97,6 +98,7 @@ class MycroftContextManager(object):
         return self.icontains(key, value, limit=limit)
 
     def blur(self, key, value, limit=10, forget=False):
+        # Inverse of focus
         focus = [x for x in self.not_icontains(key, value, limit=None)]
         self.callibrate_history(focus, forget)
         return self.not_icontains(key, value, limit=limit)
@@ -119,7 +121,8 @@ class MycroftContextManager(object):
 
         if not filter_by:
             # Return True no matter what
-            filter_function = lambda x: True
+            def filter_function(item):
+                return True
         elif hasattr(filter_by, '__call__'):
             filter_function = filter_by
         elif isinstance(filter_by, dict):
@@ -189,4 +192,3 @@ if __name__ == "__main__":
 
     for item in context_manager.history[0:10]:
         print "after blur:", item
-
